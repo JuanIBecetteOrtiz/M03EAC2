@@ -17,8 +17,9 @@ class MySeleniumTests(StaticLiveServerTestCase):
         opts.add_argument("--disable-dev-shm-usage")
         opts.add_argument("--disable-gpu")
         opts.add_argument("--window-size=1920,1080")
+        opts.add_argument("--lang=en-US")
 
-        # Usar la ruta de Chrome local si no estamos en CI
+        # Usar ruta local de Chrome si no estamos en CI
         if "CI" not in os.environ and os.path.exists("/opt/google/chrome/chrome"):
             opts.binary_location = "/opt/google/chrome/chrome"
 
@@ -43,7 +44,10 @@ class MySeleniumTests(StaticLiveServerTestCase):
         user_field = self.wait.until(EC.presence_of_element_located((By.NAME, "username")))
         user_field.send_keys("isard")
         self.selenium.find_element(By.NAME, "password").send_keys("pirineus")
-        self.selenium.find_element(By.XPATH, "//input[@type='submit']").click()
+        
+        # Enviar formulario de login con submit directo
+        login_form = self.selenium.find_element(By.ID, "login-form")
+        login_form.submit()
 
         # Esperar a que el login termine
         self.wait.until(EC.presence_of_element_located((By.ID, "user-tools")))
@@ -54,13 +58,15 @@ class MySeleniumTests(StaticLiveServerTestCase):
         group_input = self.wait.until(EC.presence_of_element_located((By.NAME, "name")))
         group_name = "Auditors"
         group_input.send_keys(group_name)
-        self.selenium.find_element(By.NAME, "_save").click()
 
-        # Asegurar navegación al listado de grupos tras guardar
-        self.selenium.get(f"{self.live_server_url}/admin/auth/group/")
+        # Enviar el formulario del grupo mediante submit
+        group_form = self.selenium.find_element(By.ID, "group_form")
+        group_form.submit()
 
-        # 3. Comprobar que el grupo aparece en el listado
-        group_link = self.wait.until(EC.presence_of_element_located((By.LINK_TEXT, group_name)))
+        # 3. Comprobar que redirige y el grupo aparece en la lista de grupos
+        group_link = self.wait.until(
+            EC.presence_of_element_located((By.LINK_TEXT, group_name))
+        )
         self.assertIsNotNone(group_link)
 
         # 4. Navegar a añadir usuario
@@ -70,9 +76,12 @@ class MySeleniumTests(StaticLiveServerTestCase):
         user_input.send_keys("testuser")
         self.selenium.find_element(By.NAME, "password1").send_keys("ContrasenyaSegura123!")
         self.selenium.find_element(By.NAME, "password2").send_keys("ContrasenyaSegura123!")
-        self.selenium.find_element(By.NAME, "_save").click()
 
-        # 5. Comprobar que aparece en el selector múltiple
+        # Enviar formulario de añadir usuario
+        user_form = self.selenium.find_element(By.ID, "user_form")
+        user_form.submit()
+
+        # 5. Comprobar que en la pantalla de edición del usuario aparece el grupo entre las opciones
         opcio_grup = self.wait.until(
             EC.presence_of_element_located(
                 (By.XPATH, f"//select[@id='id_groups_from']/option[text()='{group_name}']")
