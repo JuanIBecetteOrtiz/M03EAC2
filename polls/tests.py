@@ -23,8 +23,7 @@ class MySeleniumTests(StaticLiveServerTestCase):
             opts.binary_location = "/opt/google/chrome/chrome"
 
         cls.selenium = WebDriver(options=opts)
-        # Timeout más generoso (25s) para compensar la lentitud del runner en GitHub Actions
-        cls.wait = WebDriverWait(cls.selenium, 25)
+        cls.wait = WebDriverWait(cls.selenium, 20)
 
         # Superusuario para acceder al admin panel
         user = User.objects.create_user("isard", "isard@isardvdi.com", "pirineus")
@@ -57,10 +56,11 @@ class MySeleniumTests(StaticLiveServerTestCase):
         group_input.send_keys(group_name)
         self.selenium.find_element(By.NAME, "_save").click()
 
-        # 3. Comprobar que el grupo aparece en el changelist
-        group_link = self.wait.until(
-            EC.presence_of_element_located((By.XPATH, f"//th[contains(@class, 'field-name')]//a[text()='{group_name}'] | //a[text()='{group_name}']"))
-        )
+        # Asegurar navegación al listado de grupos tras guardar
+        self.selenium.get(f"{self.live_server_url}/admin/auth/group/")
+
+        # 3. Comprobar que el grupo aparece en el listado
+        group_link = self.wait.until(EC.presence_of_element_located((By.LINK_TEXT, group_name)))
         self.assertIsNotNone(group_link)
 
         # 4. Navegar a añadir usuario
