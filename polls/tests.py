@@ -1,3 +1,4 @@
+import os
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.contrib.auth.models import User
 from selenium.webdriver.chrome.webdriver import WebDriver
@@ -16,10 +17,14 @@ class MySeleniumTests(StaticLiveServerTestCase):
         opts.add_argument("--disable-dev-shm-usage")
         opts.add_argument("--disable-gpu")
         opts.add_argument("--window-size=1920,1080")
-        
+
+        # Usar la ruta de Chrome de la VM Isard si existe; si no, la del entorno CI
+        if os.path.exists("/opt/google/chrome/chrome"):
+            opts.binary_location = "/opt/google/chrome/chrome"
+
         cls.selenium = WebDriver(options=opts)
         cls.wait = WebDriverWait(cls.selenium, 10)
-        
+
         # Superusuario para acceder al admin panel en los tests
         user = User.objects.create_user("isard", "isard@isardvdi.com", "pirineus")
         user.is_superuser = True
@@ -34,7 +39,7 @@ class MySeleniumTests(StaticLiveServerTestCase):
     def test_crear_grup_i_verificar_en_creacio_usuari(self):
         # 1. Login en el admin panel
         self.selenium.get(f"{self.live_server_url}/admin/login/")
-        
+
         user_field = self.wait.until(EC.presence_of_element_located((By.NAME, "username")))
         user_field.send_keys("isard")
         self.selenium.find_element(By.NAME, "password").send_keys("pirineus")
@@ -45,7 +50,7 @@ class MySeleniumTests(StaticLiveServerTestCase):
 
         # 2. Navegar a la pantalla de añadir un nuevo Grupo
         self.selenium.get(f"{self.live_server_url}/admin/auth/group/add/")
-        
+
         # Introducir nombre del grupo y guardar
         group_input = self.wait.until(EC.presence_of_element_located((By.NAME, "name")))
         group_name = "Auditors"
