@@ -18,7 +18,7 @@ class MySeleniumTests(StaticLiveServerTestCase):
         opts.add_argument("--disable-gpu")
         opts.add_argument("--window-size=1920,1080")
 
-        # Usar ruta local si no estamos en CI
+        # Usar la ruta específica de la máquina Isard solo si no estamos en CI
         if "CI" not in os.environ and os.path.exists("/opt/google/chrome/chrome"):
             opts.binary_location = "/opt/google/chrome/chrome"
 
@@ -43,10 +43,9 @@ class MySeleniumTests(StaticLiveServerTestCase):
         user_field = self.wait.until(EC.presence_of_element_located((By.NAME, "username")))
         user_field.send_keys("isard")
         self.selenium.find_element(By.NAME, "password").send_keys("pirineus")
-        submit_btn = self.selenium.find_element(By.XPATH, "//input[@type='submit']")
-        self.selenium.execute_script("arguments[0].click();", submit_btn)
+        self.selenium.find_element(By.XPATH, "//input[@type='submit']").click()
 
-        # Esperar a que cargue el panel principal
+        # Esperar a que el login termine
         self.wait.until(EC.presence_of_element_located((By.ID, "user-tools")))
 
         # 2. Navegar a crear grupo
@@ -56,15 +55,12 @@ class MySeleniumTests(StaticLiveServerTestCase):
         group_name = "Auditors"
         group_input.send_keys(group_name)
 
-        save_btn = self.wait.until(EC.element_to_be_clickable((By.NAME, "_save")))
-        self.selenium.execute_script("arguments[0].click();", save_btn)
+        # Enviar el formulario haciendo click en el botón de guardar
+        self.selenium.find_element(By.XPATH, "//input[@name='_save']").click()
 
-        # Esperar mensaje de confirmación de Django Admin
-        self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "li.success, ul.messagelist")))
-
-        # 3. Comprobar que el grupo aparece en la tabla
+        # 3. Comprobar que el grupo aparece en el listado
         group_link = self.wait.until(
-            EC.presence_of_element_located((By.XPATH, f"//*[text()='{group_name}']"))
+            EC.presence_of_element_located((By.LINK_TEXT, group_name))
         )
         self.assertIsNotNone(group_link)
 
@@ -75,9 +71,7 @@ class MySeleniumTests(StaticLiveServerTestCase):
         user_input.send_keys("testuser")
         self.selenium.find_element(By.NAME, "password1").send_keys("ContrasenyaSegura123!")
         self.selenium.find_element(By.NAME, "password2").send_keys("ContrasenyaSegura123!")
-
-        save_user_btn = self.wait.until(EC.element_to_be_clickable((By.NAME, "_save")))
-        self.selenium.execute_script("arguments[0].click();", save_user_btn)
+        self.selenium.find_element(By.XPATH, "//input[@name='_save']").click()
 
         # 5. Comprobar que en la pantalla de edición del usuario aparece el grupo entre las opciones
         opcio_grup = self.wait.until(
