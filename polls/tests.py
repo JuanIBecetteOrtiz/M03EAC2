@@ -18,14 +18,15 @@ class MySeleniumTests(StaticLiveServerTestCase):
         opts.add_argument("--disable-gpu")
         opts.add_argument("--window-size=1920,1080")
 
-        # Si NO estamos en GitHub Actions y existe la ruta local de Isard, la usamos
+        # Usar la ruta de Chrome local si no estamos en CI
         if "CI" not in os.environ and os.path.exists("/opt/google/chrome/chrome"):
             opts.binary_location = "/opt/google/chrome/chrome"
 
         cls.selenium = WebDriver(options=opts)
-        cls.wait = WebDriverWait(cls.selenium, 10)
+        # Timeout más generoso (25s) para compensar la lentitud del runner en GitHub Actions
+        cls.wait = WebDriverWait(cls.selenium, 25)
 
-        # Superusuario para acceder al admin panel en los tests
+        # Superusuario para acceder al admin panel
         user = User.objects.create_user("isard", "isard@isardvdi.com", "pirineus")
         user.is_superuser = True
         user.is_staff = True
@@ -45,23 +46,24 @@ class MySeleniumTests(StaticLiveServerTestCase):
         self.selenium.find_element(By.NAME, "password").send_keys("pirineus")
         self.selenium.find_element(By.XPATH, "//input[@type='submit']").click()
 
-        # Esperar a que el login termine y cargue el panel principal
+        # Esperar a que el login termine
         self.wait.until(EC.presence_of_element_located((By.ID, "user-tools")))
 
-        # 2. Navegar a la pantalla de añadir un nuevo Grupo
+        # 2. Navegar a crear grupo
         self.selenium.get(f"{self.live_server_url}/admin/auth/group/add/")
 
-        # Introducir nombre del grupo y guardar
         group_input = self.wait.until(EC.presence_of_element_located((By.NAME, "name")))
         group_name = "Auditors"
         group_input.send_keys(group_name)
         self.selenium.find_element(By.NAME, "_save").click()
 
-        # 3. Comprobar que el grupo aparece en el listado de grupos (/admin/auth/group/)
-        group_link = self.wait.until(EC.presence_of_element_located((By.LINK_TEXT, group_name)))
+        # 3. Comprobar que el grupo aparece en el changelist
+        group_link = self.wait.until(
+            EC.presence_of_element_located((By.XPATH, f"//th[contains(@class, 'field-name')]//a[text()='{group_name}'] | //a[text()='{group_name}']"))
+        )
         self.assertIsNotNone(group_link)
 
-        # 4. Navegar a la pantalla de añadir usuario
+        # 4. Navegar a añadir usuario
         self.selenium.get(f"{self.live_server_url}/admin/auth/user/add/")
 
         user_input = self.wait.until(EC.presence_of_element_located((By.NAME, "username")))
@@ -70,7 +72,7 @@ class MySeleniumTests(StaticLiveServerTestCase):
         self.selenium.find_element(By.NAME, "password2").send_keys("ContrasenyaSegura123!")
         self.selenium.find_element(By.NAME, "_save").click()
 
-        # 5. Comprobar que en la pantalla de edición del usuario aparece el grupo entre las opciones
+        # 5. Comprobar que aparece en el selector múltiple
         opcio_grup = self.wait.until(
             EC.presence_of_element_located(
                 (By.XPATH, f"//select[@id='id_groups_from']/option[text()='{group_name}']")
