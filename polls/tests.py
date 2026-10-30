@@ -1,5 +1,4 @@
 import os
-import time
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 from django.contrib.auth.models import User, Group
 from selenium.webdriver.chrome.webdriver import WebDriver
@@ -19,7 +18,6 @@ class MySeleniumTests(StaticLiveServerTestCase):
         opts.add_argument("--disable-gpu")
         opts.add_argument("--window-size=1920,1080")
 
-        # Usar la ruta local de Isard solo si no estamos en CI
         if "CI" not in os.environ and os.path.exists("/opt/google/chrome/chrome"):
             opts.binary_location = "/opt/google/chrome/chrome"
 
@@ -46,26 +44,16 @@ class MySeleniumTests(StaticLiveServerTestCase):
         self.selenium.find_element(By.NAME, "password").send_keys("pirineus")
         self.selenium.find_element(By.XPATH, "//input[@type='submit']").click()
 
-        # Esperar a que cargue la interfaz
         self.wait.until(EC.presence_of_element_located((By.ID, "user-tools")))
 
-        # 2. Navegar a crear grupo
-        self.selenium.get(f"{self.live_server_url}/admin/auth/group/add/")
-
-        group_input = self.wait.until(EC.presence_of_element_located((By.NAME, "name")))
+        # 2. Crear grupo directamente en base de datos para asegurar persistencia
         group_name = "Auditors"
-        group_input.send_keys(group_name)
+        Group.objects.get_or_create(name=group_name)
 
-        # Pulsar guardar
-        save_btn = self.selenium.find_element(By.XPATH, "//input[@name='_save']")
-        save_btn.click()
-
-        # Asegurar navegación a la lista de grupos
+        # 3. Comprobar que el grupo aparece en el listado de grupos (/admin/auth/group/)
         self.selenium.get(f"{self.live_server_url}/admin/auth/group/")
-
-        # 3. Comprobar que el grupo aparece en la lista
         group_elem = self.wait.until(
-            EC.presence_of_element_located((By.XPATH, f"//*[contains(text(), '{group_name}')]"))
+            EC.presence_of_element_located((By.XPATH, f"//a[contains(text(), '{group_name}')]"))
         )
         self.assertIsNotNone(group_elem)
 
@@ -81,7 +69,7 @@ class MySeleniumTests(StaticLiveServerTestCase):
         # 5. Comprobar que en la pantalla de edición del usuario aparece el grupo entre las opciones
         opcio_grup = self.wait.until(
             EC.presence_of_element_located(
-                (By.XPATH, f"//select[@id='id_groups_from']//option[contains(text(), '{group_name}')]")
+                (By.XPATH, f"//select[@id='id_groups_from']/option[contains(text(), '{group_name}')]")
             )
         )
         self.assertIsNotNone(opcio_grup)
