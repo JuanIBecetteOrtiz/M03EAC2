@@ -18,8 +18,8 @@ class MySeleniumTests(StaticLiveServerTestCase):
         opts.add_argument("--disable-gpu")
         opts.add_argument("--window-size=1920,1080")
 
-        # Usar la ruta de Chrome de la VM Isard si existe; si no, la del entorno CI
-        if os.path.exists("/opt/google/chrome/chrome"):
+        # Si NO estamos en GitHub Actions y existe la ruta local de Isard, la usamos
+        if "CI" not in os.environ and os.path.exists("/opt/google/chrome/chrome"):
             opts.binary_location = "/opt/google/chrome/chrome"
 
         cls.selenium = WebDriver(options=opts)
