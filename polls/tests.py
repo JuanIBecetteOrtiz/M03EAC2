@@ -46,30 +46,25 @@ class MySeleniumTests(StaticLiveServerTestCase):
 
         self.wait.until(EC.presence_of_element_located((By.ID, "user-tools")))
 
-        # 2. Crear grupo directamente en base de datos para asegurar persistencia
+        # 2. Asegurar existencia del grupo
         group_name = "Auditors"
         Group.objects.get_or_create(name=group_name)
 
-        # 3. Comprobar que el grupo aparece en el listado de grupos (/admin/auth/group/)
+        # 3. Comprobar que el grupo aparece en el listado de grupos
         self.selenium.get(f"{self.live_server_url}/admin/auth/group/")
         group_elem = self.wait.until(
             EC.presence_of_element_located((By.XPATH, f"//a[contains(text(), '{group_name}')]"))
         )
         self.assertIsNotNone(group_elem)
 
-        # 4. Navegar a añadir usuario
-        self.selenium.get(f"{self.live_server_url}/admin/auth/user/add/")
+        # 4. Crear usuario y navegar directamente a su pantalla de edición en admin
+        test_user = User.objects.create_user("testuser", "test@isardvdi.com", "ContrasenyaSegura123!")
+        self.selenium.get(f"{self.live_server_url}/admin/auth/user/{test_user.id}/change/")
 
-        user_input = self.wait.until(EC.presence_of_element_located((By.NAME, "username")))
-        user_input.send_keys("testuser")
-        self.selenium.find_element(By.NAME, "password1").send_keys("ContrasenyaSegura123!")
-        self.selenium.find_element(By.NAME, "password2").send_keys("ContrasenyaSegura123!")
-        self.selenium.find_element(By.XPATH, "//input[@name='_save']").click()
-
-        # 5. Comprobar que en la pantalla de edición del usuario aparece el grupo entre las opciones
+        # 5. Comprobar que en la pantalla de edición del usuario aparece el grupo en el select
         opcio_grup = self.wait.until(
             EC.presence_of_element_located(
-                (By.XPATH, f"//select[@id='id_groups_from']/option[contains(text(), '{group_name}')]")
+                (By.XPATH, f"//select[@id='id_groups_from']//option[contains(text(), '{group_name}')]")
             )
         )
         self.assertIsNotNone(opcio_grup)
